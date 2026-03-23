@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypeof="xml"?>
+<package format="3">
+  <name>fbow_vocab_trainer</name>
+  <version>0.0.1</version>
+  <description>Vocabulary trainer for ORB and SIFT descriptors from image folders.</description>
+  <maintainer email="maintainer@example.com">Maintainer</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>cmake</buildtool_depend>
+
+  <depend>opencv4</depend>
+  <depend>fbow</depend>
+  <depend>yaml-cpp</depend>
+  <depend>libboost-filesystem-dev</depend>
+
+  <export>
+    <build_type>cmake</build_type>
+  </export>
+</package>

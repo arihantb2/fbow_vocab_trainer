@@ -1,0 +1,36 @@
+feature:
+  type: orb
+
+dataset:
+  images_dir: /home/a.lunawat/camera_calibration_datasets/camera_calibration-images/images
+  recursive: true
+  max_images: 0
+  extensions: [png, jpg, jpeg, bmp, tiff]
+
+orb:
+  nfeatures: 2000
+  scale_factor: 1.2
+  nlevels: 8
+  edge_threshold: 31
+  first_level: 0
+  wta_k: 2
+  score_type: 0
+  patch_size: 31
+  fast_threshold: 20
+
+trainer:
+  k: 10
+  L: 6
+  nthreads: 1
+  max_iters: 0
+  max_features_per_image: 0
+
+output:
+  vocab_path: vocab/orb_voc.fbow
+
+test:
+  enabled: true
+  max_images: 5
+  top_k: 10
+  output_file: vocab/orb_voc_test.csv
+

@@ -1,0 +1,55 @@
+feature:
+  # Valid values: orb, sift
+  type: orb
+
+dataset:
+  # Root directory containing images (recursively by default).
+  images_dir: /path/to/images
+  recursive: true
+  # Optional cap to speed up training.
+  max_images: 0
+  extensions: [png, jpg, jpeg, bmp, tiff]
+
+orb:
+  # ORB extractor params (OpenCV cv::ORB::create argument mapping).
+  nfeatures: 2000
+  scale_factor: 1.2
+  nlevels: 8
+  edge_threshold: 31
+  first_level: 0
+  wta_k: 2
+  score_type: 0
+  patch_size: 31
+  fast_threshold: 20
+
+sift:
+  # SIFT extractor params (OpenCV cv::SIFT::create argument mapping).
+  nfeatures: 0
+  n_octave_layers: 3
+  contrast_threshold: 0.04
+  edge_threshold: 10.0
+  sigma: 1.6
+
+trainer:
+  # fbow vocabulary parameters (k-ary tree branching factor and depth).
+  k: 10
+  L: 6
+  # Number of threads to use in vocabulary creation.
+  nthreads: 1
+  # Maximum number of k-means iterations per level (0 = no iterations).
+  # If omitted, fbow uses its internal default.
+  max_iters: 0
+  # Optional cap: limit descriptors per image (0 means no cap).
+  max_features_per_image: 0
+
+output:
+  # Output fbow vocabulary file (binary).
+  vocab_path: vocab/orb_voc.fbow
+
+test:
+  # Reload the saved vocabulary and run a small transform test on a few images.
+  enabled: true
+  max_images: 5
+  top_k: 10
+  output_file: vocab/orb_voc_test.csv
+

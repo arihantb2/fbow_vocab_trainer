@@ -1,0 +1,32 @@
+feature:
+  type: sift
+
+dataset:
+  images_dir: /path/to/images
+  recursive: true
+  max_images: 0
+  extensions: [png, jpg, jpeg, bmp, tiff]
+
+sift:
+  nfeatures: 0
+  n_octave_layers: 3
+  contrast_threshold: 0.04
+  edge_threshold: 10.0
+  sigma: 1.6
+
+trainer:
+  k: 10
+  L: 6
+  nthreads: 1
+  max_iters: 0
+  max_features_per_image: 0
+
+output:
+  vocab_path: vocab/sift_voc.fbow
+
+test:
+  enabled: true
+  max_images: 5
+  top_k: 10
+  output_file: vocab/sift_voc_test.csv
+
