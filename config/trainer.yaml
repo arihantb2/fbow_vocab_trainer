@@ -3,8 +3,12 @@ feature:
   type: orb
 
 dataset:
-  # Root directory containing images (recursively by default).
-  images_dir: /path/to/images
+  # One or more directories containing images (recursively by default).
+  # Use images_dirs (list) to specify multiple directories, or images_dir
+  # (single string) for backward compatibility with a single directory.
+  images_dirs:
+    - /path/to/images
+  # images_dir: /path/to/images   # single-directory shorthand (also accepted)
   recursive: true
   # Optional cap to speed up training.
   max_images: 0
@@ -41,6 +45,10 @@ trainer:
   max_iters: 0
   # Optional cap: limit descriptors per image (0 means no cap).
   max_features_per_image: 0
+  # Optional cap: limit total descriptors across all images (0 means no cap).
+  # Budget is distributed evenly so memory is bounded upfront, independent of
+  # dataset size. Takes the min with max_features_per_image when both are set.
+  max_total_descriptors: 0
 
 output:
   # Output fbow vocabulary file (binary).

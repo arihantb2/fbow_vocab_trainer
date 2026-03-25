@@ -57,7 +57,7 @@ std::vector<std::string> normalizeExtensions(const std::vector<std::string>& in)
 
 struct DatasetConfig
 {
-    std::string imagesDir;
+    std::vector<std::string> imagesDirs;
     bool recursive = true;
     int maxImages = 0;
     std::vector<std::string> extensions = {".png", ".jpg", ".jpeg", ".bmp", ".tiff"};
@@ -93,6 +93,7 @@ struct TrainerConfig
     int maxIters = -2; // fbow default if -2
 
     int maxFeaturesPerImage = 0;
+    int maxTotalDescriptors = 0;  // 0 = unlimited; caps aggregate descriptor count across all images
 };
 
 struct OutputConfig
@@ -132,7 +133,23 @@ AppConfig loadConfig(const std::string& yamlPath)
     }
 
     const YAML::Node ds = getRequired<YAML::Node>(root, "dataset");
-    cfg.dataset.imagesDir = getRequired<std::string>(ds, "images_dir");
+    // Support images_dirs (list) or images_dir (single string, backward compat).
+    if (ds["images_dirs"])
+    {
+        cfg.dataset.imagesDirs = ds["images_dirs"].as<std::vector<std::string> >();
+        if (cfg.dataset.imagesDirs.empty())
+        {
+            throw std::runtime_error("dataset.images_dirs must not be empty");
+        }
+    }
+    else if (ds["images_dir"])
+    {
+        cfg.dataset.imagesDirs.push_back(ds["images_dir"].as<std::string>());
+    }
+    else
+    {
+        throw std::runtime_error("Missing required key: dataset.images_dir or dataset.images_dirs");
+    }
     if (ds["recursive"])
     {
         cfg.dataset.recursive = ds["recursive"].as<bool>();
@@ -160,6 +177,10 @@ AppConfig loadConfig(const std::string& yamlPath)
     if (trainer["max_features_per_image"])
     {
         cfg.trainer.maxFeaturesPerImage = trainer["max_features_per_image"].as<int>();
+    }
+    if (trainer["max_total_descriptors"])
+    {
+        cfg.trainer.maxTotalDescriptors = trainer["max_total_descriptors"].as<int>();
     }
 
     const YAML::Node output = getRequired<YAML::Node>(root, "output");
@@ -233,51 +254,57 @@ AppConfig loadConfig(const std::string& yamlPath)
 
 std::vector<boost::filesystem::path> collectImages(const DatasetConfig& cfg)
 {
-    const boost::filesystem::path root(cfg.imagesDir);
-    if (!boost::filesystem::exists(root))
-    {
-        throw std::runtime_error("images_dir does not exist: " + cfg.imagesDir);
-    }
-    if (!boost::filesystem::is_directory(root))
-    {
-        throw std::runtime_error("images_dir is not a directory: " + cfg.imagesDir);
-    }
-
     const std::vector<std::string> allowed = normalizeExtensions(cfg.extensions);
 
     std::vector<boost::filesystem::path> images;
-    if (cfg.recursive)
+    for (size_t d = 0; d < cfg.imagesDirs.size(); ++d)
     {
-        for (boost::filesystem::recursive_directory_iterator it(root), end; it != end; ++it)
+        const boost::filesystem::path root(cfg.imagesDirs[d]);
+        if (!boost::filesystem::exists(root))
         {
-            if (!boost::filesystem::is_regular_file(*it))
+            throw std::runtime_error("images directory does not exist: " + cfg.imagesDirs[d]);
+        }
+        if (!boost::filesystem::is_directory(root))
+        {
+            throw std::runtime_error("images path is not a directory: " + cfg.imagesDirs[d]);
+        }
+
+        if (cfg.recursive)
+        {
+            for (boost::filesystem::recursive_directory_iterator it(root), end; it != end; ++it)
             {
-                continue;
-            }
-            const std::string ext = toLower(it->path().extension().string());
-            if (std::find(allowed.begin(), allowed.end(), ext) != allowed.end())
-            {
-                images.push_back(it->path());
+                if (!boost::filesystem::is_regular_file(*it))
+                {
+                    continue;
+                }
+                const std::string ext = toLower(it->path().extension().string());
+                if (std::find(allowed.begin(), allowed.end(), ext) != allowed.end())
+                {
+                    images.push_back(it->path());
+                }
             }
         }
-    }
-    else
-    {
-        for (boost::filesystem::directory_iterator it(root), end; it != end; ++it)
+        else
         {
-            if (!boost::filesystem::is_regular_file(*it))
+            for (boost::filesystem::directory_iterator it(root), end; it != end; ++it)
             {
-                continue;
-            }
-            const std::string ext = toLower(it->path().extension().string());
-            if (std::find(allowed.begin(), allowed.end(), ext) != allowed.end())
-            {
-                images.push_back(it->path());
+                if (!boost::filesystem::is_regular_file(*it))
+                {
+                    continue;
+                }
+                const std::string ext = toLower(it->path().extension().string());
+                if (std::find(allowed.begin(), allowed.end(), ext) != allowed.end())
+                {
+                    images.push_back(it->path());
+                }
             }
         }
     }
 
     std::sort(images.begin(), images.end());
+    // Remove duplicates that may arise if directories overlap.
+    images.erase(std::unique(images.begin(), images.end()), images.end());
+
     if (cfg.maxImages > 0 && static_cast<int>(images.size()) > cfg.maxImages)
     {
         images.resize(static_cast<size_t>(cfg.maxImages));
@@ -297,6 +324,22 @@ void ensureParentDirectory(const std::string& filePath)
 
 cv::Ptr<cv::ORB> makeOrb(const OrbConfig& cfg);
 cv::Ptr<cv::SIFT> makeSift(const SiftConfig& cfg);
+
+// Returns the effective per-image descriptor cap given both per-image and total budgets.
+// Distributes maxTotalDescriptors evenly across numImages so memory is bounded upfront.
+// Returns 0 if neither cap is set (no limit).
+int computeEffectiveMaxPerImage(const TrainerConfig& cfg, size_t numImages)
+{
+    const int fromTotal = (cfg.maxTotalDescriptors > 0 && numImages > 0)
+                              ? std::max(1, cfg.maxTotalDescriptors / static_cast<int>(numImages))
+                              : 0;
+
+    if (cfg.maxFeaturesPerImage > 0 && fromTotal > 0)
+    {
+        return std::min(cfg.maxFeaturesPerImage, fromTotal);
+    }
+    return std::max(cfg.maxFeaturesPerImage, fromTotal);
+}
 
 std::vector<boost::filesystem::path> selectTestImages(const std::vector<boost::filesystem::path>& images,
                                                          const TestConfig& cfg)
@@ -495,20 +538,49 @@ cv::Ptr<cv::SIFT> makeSift(const SiftConfig& cfg)
 void trainOrbVocab(const std::vector<boost::filesystem::path>& images, const AppConfig& cfg,
                     fbow::Vocabulary* voc, size_t* descriptorsUsed, size_t* imagesUsed)
 {
-    std::vector<cv::Mat> features;
-    features.reserve(images.size());
     *descriptorsUsed = 0;
     *imagesUsed = 0;
+
+    const int effectiveMaxPerImage = computeEffectiveMaxPerImage(cfg.trainer, images.size());
+    const size_t maxTotal = cfg.trainer.maxTotalDescriptors > 0
+                                ? static_cast<size_t>(cfg.trainer.maxTotalDescriptors)
+                                : std::numeric_limits<size_t>::max();
 
     std::cout << "Training ORB vocabulary..." << std::endl;
     std::cout << "  k: " << cfg.trainer.k << ", L: " << cfg.trainer.L << std::endl;
     std::cout << "  nthreads: " << cfg.trainer.nthreads << ", max_iters: " << cfg.trainer.maxIters << std::endl;
     std::cout << "  images: " << images.size() << std::endl;
+    if (effectiveMaxPerImage > 0)
+    {
+        std::cout << "  features_per_image: " << effectiveMaxPerImage << std::endl;
+    }
+    else
+    {
+        std::cout << "  features_per_image: unlimited" << std::endl;
+    }
+
+    if (effectiveMaxPerImage > 0 || cfg.trainer.maxTotalDescriptors > 0)
+    {
+        const size_t upperBound = (effectiveMaxPerImage > 0 && cfg.trainer.maxTotalDescriptors > 0)
+                                      ? std::min(static_cast<size_t>(effectiveMaxPerImage) * images.size(),
+                                                 static_cast<size_t>(cfg.trainer.maxTotalDescriptors))
+                                      : (effectiveMaxPerImage > 0
+                                             ? static_cast<size_t>(effectiveMaxPerImage) * images.size()
+                                             : static_cast<size_t>(cfg.trainer.maxTotalDescriptors));
+        std::cout << "  total_features_upper_bound: " << upperBound << std::endl;
+    }
+    else
+    {
+        std::cout << "  total_features_upper_bound: unlimited" << std::endl;
+    }
+
+    std::vector<cv::Mat> features;
+    features.reserve(std::min(images.size(), maxTotal > 0 ? maxTotal : images.size()));
 
     cv::Ptr<cv::ORB> extractor = makeOrb(cfg.orb);
     const size_t reportEvery = std::max<size_t>(1, images.size() / 5);
 
-    for (size_t i = 0; i < images.size(); ++i)
+    for (size_t i = 0; i < images.size() && *descriptorsUsed < maxTotal; ++i)
     {
         const cv::Mat gray = cv::imread(images[i].string(), cv::IMREAD_GRAYSCALE);
         if (gray.empty())
@@ -538,8 +610,8 @@ void trainOrbVocab(const std::vector<boost::filesystem::path>& images, const App
             throw std::runtime_error("Unexpected ORB descriptor dimension (expected 32)");
         }
 
-        const int rows = cfg.trainer.maxFeaturesPerImage > 0
-                               ? std::min(descriptors.rows, cfg.trainer.maxFeaturesPerImage)
+        const int rows = effectiveMaxPerImage > 0
+                               ? std::min(descriptors.rows, effectiveMaxPerImage)
                                : descriptors.rows;
         if (rows <= 0)
         {
@@ -574,20 +646,49 @@ void trainOrbVocab(const std::vector<boost::filesystem::path>& images, const App
 void trainSiftVocab(const std::vector<boost::filesystem::path>& images, const AppConfig& cfg,
                     fbow::Vocabulary* voc, size_t* descriptorsUsed, size_t* imagesUsed)
 {
-    std::vector<cv::Mat> features;
-    features.reserve(images.size());
     *descriptorsUsed = 0;
     *imagesUsed = 0;
+
+    const int effectiveMaxPerImage = computeEffectiveMaxPerImage(cfg.trainer, images.size());
+    const size_t maxTotal = cfg.trainer.maxTotalDescriptors > 0
+                                ? static_cast<size_t>(cfg.trainer.maxTotalDescriptors)
+                                : std::numeric_limits<size_t>::max();
 
     std::cout << "Training SIFT vocabulary..." << std::endl;
     std::cout << "  k: " << cfg.trainer.k << ", L: " << cfg.trainer.L << std::endl;
     std::cout << "  nthreads: " << cfg.trainer.nthreads << ", max_iters: " << cfg.trainer.maxIters << std::endl;
     std::cout << "  images: " << images.size() << std::endl;
+    if (effectiveMaxPerImage > 0)
+    {
+        std::cout << "  features_per_image: " << effectiveMaxPerImage << std::endl;
+    }
+    else
+    {
+        std::cout << "  features_per_image: unlimited" << std::endl;
+    }
+
+    if (effectiveMaxPerImage > 0 || cfg.trainer.maxTotalDescriptors > 0)
+    {
+        const size_t upperBound = (effectiveMaxPerImage > 0 && cfg.trainer.maxTotalDescriptors > 0)
+                                      ? std::min(static_cast<size_t>(effectiveMaxPerImage) * images.size(),
+                                                 static_cast<size_t>(cfg.trainer.maxTotalDescriptors))
+                                      : (effectiveMaxPerImage > 0
+                                             ? static_cast<size_t>(effectiveMaxPerImage) * images.size()
+                                             : static_cast<size_t>(cfg.trainer.maxTotalDescriptors));
+        std::cout << "  total_features_upper_bound: " << upperBound << std::endl;
+    }
+    else
+    {
+        std::cout << "  total_features_upper_bound: unlimited" << std::endl;
+    }
+
+    std::vector<cv::Mat> features;
+    features.reserve(std::min(images.size(), maxTotal > 0 ? maxTotal : images.size()));
 
     cv::Ptr<cv::SIFT> extractor = makeSift(cfg.sift);
     const size_t reportEvery = std::max<size_t>(1, images.size() / 5);
 
-    for (size_t i = 0; i < images.size(); ++i)
+    for (size_t i = 0; i < images.size() && *descriptorsUsed < maxTotal; ++i)
     {
         const cv::Mat gray = cv::imread(images[i].string(), cv::IMREAD_GRAYSCALE);
         if (gray.empty())
@@ -617,8 +718,8 @@ void trainSiftVocab(const std::vector<boost::filesystem::path>& images, const Ap
             throw std::runtime_error("Unexpected SIFT descriptor dimension (expected 128)");
         }
 
-        const int rows = cfg.trainer.maxFeaturesPerImage > 0
-                               ? std::min(descriptors.rows, cfg.trainer.maxFeaturesPerImage)
+        const int rows = effectiveMaxPerImage > 0
+                               ? std::min(descriptors.rows, effectiveMaxPerImage)
                                : descriptors.rows;
         if (rows <= 0)
         {
@@ -671,7 +772,12 @@ int main(int argc, char** argv)
         std::cout << "Loading config: " << configPath << std::endl;
         AppConfig cfg = loadConfig(configPath);
 
-        std::cout << "Collecting images from: " << cfg.dataset.imagesDir << std::endl;
+        std::cout << "Collecting images from " << cfg.dataset.imagesDirs.size() << " director"
+                  << (cfg.dataset.imagesDirs.size() == 1 ? "y" : "ies") << ":" << std::endl;
+        for (size_t d = 0; d < cfg.dataset.imagesDirs.size(); ++d)
+        {
+            std::cout << "  " << cfg.dataset.imagesDirs[d] << std::endl;
+        }
         const std::vector<boost::filesystem::path> images = collectImages(cfg.dataset);
         if (images.empty())
         {

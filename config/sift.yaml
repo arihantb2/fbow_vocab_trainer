@@ -2,13 +2,19 @@ feature:
   type: sift
 
 dataset:
-  images_dir: /path/to/images
+  images_dirs:
+    - /home/a.lunawat/data/Samoa202509/RAW_DATA/r20251003_212212_SC46_sav5_15to40/preprocessed/images-AC
+    - /home/a.lunawat/data/Samoa202509/RAW_DATA/r20251003_212212_SC46_sav5_15to40/preprocessed/images-FC
+    - /home/a.lunawat/data/Samoa202509/RAW_DATA/r20250927_195953_SC21_nw1_25to40/preprocessed/images-AC
+    - /home/a.lunawat/data/Samoa202509/RAW_DATA/r20250927_195953_SC21_nw1_25to40/preprocessed/images-FC
+    - /home/a.lunawat/data/SolomonIslands2025/RAW_DATA/r20250708_032211_SC64_lughughi_40to60/i20250708_032211/preprocessed/images-AC
+    - /home/a.lunawat/data/SolomonIslands2025/RAW_DATA/r20250708_032211_SC64_lughughi_40to60/i20250708_032211/preprocessed/images-FC
   recursive: true
   max_images: 0
   extensions: [png, jpg, jpeg, bmp, tiff]
 
 sift:
-  nfeatures: 0
+  nfeatures: 5000
   n_octave_layers: 3
   contrast_threshold: 0.04
   edge_threshold: 10.0
@@ -17,16 +23,23 @@ sift:
 trainer:
   k: 10
   L: 6
-  nthreads: 1
+  nthreads: 8
   max_iters: 0
-  max_features_per_image: 0
+  # SIFT descriptors are 512 bytes each (128 floats). With many images, memory
+  # accumulates fast. Use max_features_per_image and/or max_total_descriptors
+  # to cap RAM usage. Example: 500 features/image * 1000 images * 512 B = ~244 MB.
+  max_features_per_image: 2000
+  # Hard cap on total descriptors across all images (0 = unlimited).
+  # Distributed evenly: each image gets at most max_total_descriptors / num_images.
+  # Combine with max_features_per_image for tighter per-image control.
+  max_total_descriptors: 50000000
 
 output:
-  vocab_path: vocab/sift_voc.fbow
+  vocab_path: /home/a.lunawat/data/vocabulary/sift_voc.fbow
 
 test:
   enabled: true
   max_images: 5
   top_k: 10
-  output_file: vocab/sift_voc_test.csv
+  output_file: /home/a.lunawat/data/vocabulary/sift_voc_test.csv
 
