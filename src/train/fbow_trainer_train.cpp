@@ -21,7 +21,7 @@ void trainOrbVocab(const std::vector<boost::filesystem::path>& images, const App
 
     const int effectiveMaxPerImage = computeEffectiveMaxPerImage(cfg.trainer, images.size());
     const size_t maxTotal = cfg.trainer.maxTotalDescriptors > 0 ? static_cast<size_t>(cfg.trainer.maxTotalDescriptors)
-                                                              : std::numeric_limits<size_t>::max();
+                                                                : std::numeric_limits<size_t>::max();
 
     std::cout << "Training ORB vocabulary..." << std::endl;
     std::cout << "  k: " << cfg.trainer.k << ", L: " << cfg.trainer.L << std::endl;
@@ -126,7 +126,7 @@ void trainSiftVocab(const std::vector<boost::filesystem::path>& images, const Ap
 
     const int effectiveMaxPerImage = computeEffectiveMaxPerImage(cfg.trainer, images.size());
     const size_t maxTotal = cfg.trainer.maxTotalDescriptors > 0 ? static_cast<size_t>(cfg.trainer.maxTotalDescriptors)
-                                                              : std::numeric_limits<size_t>::max();
+                                                                : std::numeric_limits<size_t>::max();
 
     std::cout << "Training SIFT vocabulary..." << std::endl;
     std::cout << "  k: " << cfg.trainer.k << ", L: " << cfg.trainer.L << std::endl;
