@@ -7,8 +7,8 @@ dataset:
     - /home/a.lunawat/data/Samoa202509/RAW_DATA/r20251003_212212_SC46_sav5_15to40/preprocessed/images-FC
     - /home/a.lunawat/data/Samoa202509/RAW_DATA/r20250927_195953_SC21_nw1_25to40/preprocessed/images-AC
     - /home/a.lunawat/data/Samoa202509/RAW_DATA/r20250927_195953_SC21_nw1_25to40/preprocessed/images-FC
-    - /home/a.lunawat/data/SolomonIslands2025/RAW_DATA/r20250708_032211_SC64_lughughi_40to60/i20250708_032211/preprocessed/images-AC
-    - /home/a.lunawat/data/SolomonIslands2025/RAW_DATA/r20250708_032211_SC64_lughughi_40to60/i20250708_032211/preprocessed/images-FC
+    - /home/a.lunawat/data/SolomonIslands2025/RAW_DATA/r20250708_032211_SC64_lughughi_40to60/preprocessed/images-AC
+    - /home/a.lunawat/data/SolomonIslands2025/RAW_DATA/r20250708_032211_SC64_lughughi_40to60/preprocessed/images-FC
   recursive: true
   max_images: 0
   extensions: [png, jpg, jpeg, bmp, tiff]

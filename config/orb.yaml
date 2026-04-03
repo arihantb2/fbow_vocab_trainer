@@ -7,14 +7,14 @@ dataset:
     - /home/a.lunawat/data/Samoa202509/RAW_DATA/r20251003_212212_SC46_sav5_15to40/preprocessed/images-FC
     - /home/a.lunawat/data/Samoa202509/RAW_DATA/r20250927_195953_SC21_nw1_25to40/preprocessed/images-AC
     - /home/a.lunawat/data/Samoa202509/RAW_DATA/r20250927_195953_SC21_nw1_25to40/preprocessed/images-FC
-    - /home/a.lunawat/data/SolomonIslands2025/RAW_DATA/r20250708_032211_SC64_lughughi_40to60/i20250708_032211/preprocessed/images-AC
-    - /home/a.lunawat/data/SolomonIslands2025/RAW_DATA/r20250708_032211_SC64_lughughi_40to60/i20250708_032211/preprocessed/images-FC
+    - /home/a.lunawat/data/SolomonIslands2025/RAW_DATA/r20250708_032211_SC64_lughughi_40to60/preprocessed/images-AC
+    - /home/a.lunawat/data/SolomonIslands2025/RAW_DATA/r20250708_032211_SC64_lughughi_40to60/preprocessed/images-FC
   recursive: true
   max_images: 0
   extensions: [png, jpg, jpeg, bmp, tiff]
 
 orb:
-  nfeatures: 750
+  nfeatures: 5000
   scale_factor: 1.2
   nlevels: 8
   edge_threshold: 31
@@ -22,12 +22,12 @@ orb:
   wta_k: 2
   score_type: 0
   patch_size: 31
-  fast_threshold: 15
+  fast_threshold: 20
 
 trainer:
   k: 10
   L: 6
-  nthreads: 1
+  nthreads: 16
   max_iters: 0
   max_features_per_image: 0
   # Hard cap on total descriptors across all images (0 = unlimited).
@@ -35,11 +35,11 @@ trainer:
   max_total_descriptors: 20000000
 
 output:
-  vocab_path: /home/a.lunawat/data/vocabulary/orb_voc_compact.fbow
+  vocab_path: /home/a.lunawat/data/vocabulary/orb_voc_uw_compact.fbow
 
 test:
   enabled: true
   max_images: 5
   top_k: 10
-  output_file: /home/a.lunawat/data/vocabulary/orb_voc_compact_test.csv
+  output_file: /home/a.lunawat/data/vocabulary/orb_voc_uw_compact_test.csv
 
