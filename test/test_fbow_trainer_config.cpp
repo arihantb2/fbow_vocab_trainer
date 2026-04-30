@@ -53,7 +53,7 @@ TEST(LoadConfig, ImagesDirsList)
 {
     const std::string yaml = R"(
 feature:
-  type: sift
+  type: brisk
 dataset:
   images_dirs:
     - /a
@@ -66,7 +66,7 @@ output:
 )";
     const boost::filesystem::path path = makeTempYaml(yaml);
     const AppConfig cfg = loadConfig(path.string());
-    EXPECT_EQ(cfg.featureType, "sift");
+    EXPECT_EQ(cfg.featureType, "brisk");
     ASSERT_EQ(cfg.dataset.imagesDirs.size(), 2u);
     EXPECT_EQ(cfg.dataset.imagesDirs[0], "/a");
     EXPECT_EQ(cfg.dataset.imagesDirs[1], "/b");

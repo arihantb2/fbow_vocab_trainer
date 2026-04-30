@@ -1,5 +1,5 @@
 feature:
-  type: sift
+  type: brisk
 
 dataset:
   images_dirs:
@@ -13,33 +13,32 @@ dataset:
   max_images: 0
   extensions: [png, jpg, jpeg, bmp, tiff]
 
-sift:
-  nfeatures: 5000
-  n_octave_layers: 3
-  contrast_threshold: 0.04
-  edge_threshold: 10.0
-  sigma: 1.6
+image_prep:
+  scale: 1.0         # resize factor applied after CLAHE (0.5 = half res); 1.0 = no resize
+  clahe:
+    enabled: false
+    clip_limit: 2.0
+    tile_grid_size: 8
+
+brisk:
+  thresh: 30
+  octaves: 3
+  pattern_scale: 1.0
 
 trainer:
   k: 10
   L: 6
   nthreads: 8
   max_iters: 0
-  # SIFT descriptors are 512 bytes each (128 floats). With many images, memory
-  # accumulates fast. Use max_features_per_image and/or max_total_descriptors
-  # to cap RAM usage. Example: 500 features/image * 1000 images * 512 B = ~244 MB.
+  # BRISK descriptors are 64 bytes each (binary). Memory pressure is similar to ORB.
   max_features_per_image: 2000
-  # Hard cap on total descriptors across all images (0 = unlimited).
-  # Distributed evenly: each image gets at most max_total_descriptors / num_images.
-  # Combine with max_features_per_image for tighter per-image control.
-  max_total_descriptors: 50000000
+  max_total_descriptors: 20000000
 
 output:
-  vocab_path: /home/a.lunawat/data/vocabulary/sift_voc.fbow
+  vocab_path: /home/a.lunawat/data/vocabulary/brisk_voc_uw.fbow
 
 test:
   enabled: true
   max_images: 5
   top_k: 10
-  output_file: /home/a.lunawat/data/vocabulary/sift_voc_test.csv
-
+  output_file: /path/to/output/brisk_voc_test.csv

@@ -2,8 +2,6 @@
 
 #include "features/fbow_trainer_features.h"
 
-#include <opencv2/imgcodecs.hpp>
-
 #include <algorithm>
 #include <iostream>
 #include <limits>
@@ -55,17 +53,19 @@ void trainOrbVocab(const std::vector<boost::filesystem::path>& images, const App
     features.reserve(std::min(images.size(), maxTotal > 0 ? maxTotal : images.size()));
 
     cv::Ptr<cv::ORB> extractor = makeOrb(cfg.orb);
+    cv::Ptr<cv::CLAHE> clahe = makeClahe(cfg.imagePrep);
     const size_t reportEvery = std::max<size_t>(1, images.size() / 5);
 
+    std::vector<cv::KeyPoint> keypoints;
     for (size_t i = 0; i < images.size() && *descriptorsUsed < maxTotal; ++i)
     {
-        const cv::Mat gray = cv::imread(images[i].string(), cv::IMREAD_GRAYSCALE);
+        const cv::Mat gray = prepareImage(loadGray(images[i].string()), clahe, cfg.imagePrep.scale);
         if (gray.empty())
         {
             continue;
         }
 
-        std::vector<cv::KeyPoint> keypoints;
+        keypoints.clear();
         cv::Mat descriptors;
         extractor->detectAndCompute(gray, cv::Mat(), keypoints, descriptors);
         if (descriptors.empty())
@@ -118,8 +118,8 @@ void trainOrbVocab(const std::vector<boost::filesystem::path>& images, const App
     creator.create(*voc, features, cfg.featureType, params);
 }
 
-void trainSiftVocab(const std::vector<boost::filesystem::path>& images, const AppConfig& cfg, fbow::Vocabulary* voc,
-                    size_t* descriptorsUsed, size_t* imagesUsed)
+void trainBriskVocab(const std::vector<boost::filesystem::path>& images, const AppConfig& cfg, fbow::Vocabulary* voc,
+                     size_t* descriptorsUsed, size_t* imagesUsed)
 {
     *descriptorsUsed = 0;
     *imagesUsed = 0;
@@ -128,7 +128,7 @@ void trainSiftVocab(const std::vector<boost::filesystem::path>& images, const Ap
     const size_t maxTotal = cfg.trainer.maxTotalDescriptors > 0 ? static_cast<size_t>(cfg.trainer.maxTotalDescriptors)
                                                                 : std::numeric_limits<size_t>::max();
 
-    std::cout << "Training SIFT vocabulary..." << std::endl;
+    std::cout << "Training BRISK vocabulary..." << std::endl;
     std::cout << "  k: " << cfg.trainer.k << ", L: " << cfg.trainer.L << std::endl;
     std::cout << "  nthreads: " << cfg.trainer.nthreads << ", max_iters: " << cfg.trainer.maxIters << std::endl;
     std::cout << "  images: " << images.size() << std::endl;
@@ -159,18 +159,20 @@ void trainSiftVocab(const std::vector<boost::filesystem::path>& images, const Ap
     std::vector<cv::Mat> features;
     features.reserve(std::min(images.size(), maxTotal > 0 ? maxTotal : images.size()));
 
-    cv::Ptr<cv::SIFT> extractor = makeSift(cfg.sift);
+    cv::Ptr<cv::BRISK> extractor = makeBrisk(cfg.brisk);
+    cv::Ptr<cv::CLAHE> clahe = makeClahe(cfg.imagePrep);
     const size_t reportEvery = std::max<size_t>(1, images.size() / 5);
 
+    std::vector<cv::KeyPoint> keypoints;
     for (size_t i = 0; i < images.size() && *descriptorsUsed < maxTotal; ++i)
     {
-        const cv::Mat gray = cv::imread(images[i].string(), cv::IMREAD_GRAYSCALE);
+        const cv::Mat gray = prepareImage(loadGray(images[i].string()), clahe, cfg.imagePrep.scale);
         if (gray.empty())
         {
             continue;
         }
 
-        std::vector<cv::KeyPoint> keypoints;
+        keypoints.clear();
         cv::Mat descriptors;
         extractor->detectAndCompute(gray, cv::Mat(), keypoints, descriptors);
         if (descriptors.empty())
@@ -183,13 +185,13 @@ void trainSiftVocab(const std::vector<boost::filesystem::path>& images, const Ap
             std::cout << "  feature_progress: " << (i + 1) << "/" << images.size() << std::endl;
         }
 
-        if (descriptors.type() != CV_32FC1)
+        if (descriptors.type() != CV_8UC1)
         {
-            throw std::runtime_error("SIFT descriptors must be CV_32FC1");
+            throw std::runtime_error("BRISK descriptors must be CV_8UC1");
         }
-        if (descriptors.cols != 128)
+        if (descriptors.cols != 64)
         {
-            throw std::runtime_error("Unexpected SIFT descriptor dimension (expected 128)");
+            throw std::runtime_error("Unexpected BRISK descriptor dimension (expected 64)");
         }
 
         const int rows = effectiveMaxPerImage > 0 ? std::min(descriptors.rows, effectiveMaxPerImage) : descriptors.rows;
@@ -215,7 +217,7 @@ void trainSiftVocab(const std::vector<boost::filesystem::path>& images, const Ap
 
     if (features.empty())
     {
-        throw std::runtime_error("No SIFT features extracted from dataset");
+        throw std::runtime_error("No BRISK features extracted from dataset");
     }
 
     fbow::VocabularyCreator creator;

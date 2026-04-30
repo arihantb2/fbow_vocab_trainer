@@ -4,8 +4,6 @@
 
 #include <boost/filesystem.hpp>
 
-#include <opencv2/imgcodecs.hpp>
-
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -104,10 +102,12 @@ void runVocabularyTest(fbow::Vocabulary& voc, const std::vector<boost::filesyste
     if (cfg.featureType == "orb")
     {
         cv::Ptr<cv::ORB> extractor = makeOrb(cfg.orb);
+        cv::Ptr<cv::CLAHE> clahe = makeClahe(cfg.imagePrep);
         const size_t reportEvery = std::max<size_t>(1, testImages.size() / 5);
+        std::vector<cv::KeyPoint> keypoints;
         for (size_t i = 0; i < testImages.size(); ++i)
         {
-            const cv::Mat gray = cv::imread(testImages[i].string(), cv::IMREAD_GRAYSCALE);
+            const cv::Mat gray = prepareImage(loadGray(testImages[i].string()), clahe, cfg.imagePrep.scale);
             if (gray.empty())
             {
                 continue;
@@ -118,7 +118,7 @@ void runVocabularyTest(fbow::Vocabulary& voc, const std::vector<boost::filesyste
                 std::cout << "  test_progress: " << (i + 1) << "/" << testImages.size() << std::endl;
             }
 
-            std::vector<cv::KeyPoint> keypoints;
+            keypoints.clear();
             cv::Mat descriptors;
             extractor->detectAndCompute(gray, cv::Mat(), keypoints, descriptors);
             if (descriptors.empty())
@@ -145,11 +145,13 @@ void runVocabularyTest(fbow::Vocabulary& voc, const std::vector<boost::filesyste
     }
     else
     {
-        cv::Ptr<cv::SIFT> extractor = makeSift(cfg.sift);
+        cv::Ptr<cv::BRISK> extractor = makeBrisk(cfg.brisk);
+        cv::Ptr<cv::CLAHE> clahe = makeClahe(cfg.imagePrep);
         const size_t reportEvery = std::max<size_t>(1, testImages.size() / 5);
+        std::vector<cv::KeyPoint> keypoints;
         for (size_t i = 0; i < testImages.size(); ++i)
         {
-            const cv::Mat gray = cv::imread(testImages[i].string(), cv::IMREAD_GRAYSCALE);
+            const cv::Mat gray = prepareImage(loadGray(testImages[i].string()), clahe, cfg.imagePrep.scale);
             if (gray.empty())
             {
                 continue;
@@ -160,7 +162,7 @@ void runVocabularyTest(fbow::Vocabulary& voc, const std::vector<boost::filesyste
                 std::cout << "  test_progress: " << (i + 1) << "/" << testImages.size() << std::endl;
             }
 
-            std::vector<cv::KeyPoint> keypoints;
+            keypoints.clear();
             cv::Mat descriptors;
             extractor->detectAndCompute(gray, cv::Mat(), keypoints, descriptors);
             if (descriptors.empty())
@@ -168,7 +170,7 @@ void runVocabularyTest(fbow::Vocabulary& voc, const std::vector<boost::filesyste
                 continue;
             }
 
-            if (descriptors.type() != CV_32FC1 || descriptors.cols != 128)
+            if (descriptors.type() != CV_8UC1 || descriptors.cols != 64)
             {
                 continue;
             }

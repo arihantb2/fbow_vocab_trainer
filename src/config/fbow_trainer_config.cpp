@@ -36,9 +36,9 @@ AppConfig loadConfig(const std::string& yamlPath)
 
     AppConfig cfg;
     cfg.featureType = toLower(getRequired<std::string>(root["feature"], "type"));
-    if (cfg.featureType != "orb" && cfg.featureType != "sift")
+    if (cfg.featureType != "orb" && cfg.featureType != "brisk")
     {
-        throw std::runtime_error("feature.type must be 'orb' or 'sift'");
+        throw std::runtime_error("feature.type must be 'orb' or 'brisk'");
     }
 
     const YAML::Node ds = getRequired<YAML::Node>(root, "dataset");
@@ -120,6 +120,35 @@ AppConfig loadConfig(const std::string& yamlPath)
         }
     }
 
+    const YAML::Node imagePrep = root["image_prep"];
+    if (imagePrep)
+    {
+        if (imagePrep["scale"])
+        {
+            cfg.imagePrep.scale = imagePrep["scale"].as<double>();
+            if (cfg.imagePrep.scale <= 0.0)
+            {
+                throw std::runtime_error("image_prep.scale must be > 0");
+            }
+        }
+        const YAML::Node clahe = imagePrep["clahe"];
+        if (clahe)
+        {
+            if (clahe["enabled"])
+            {
+                cfg.imagePrep.claheEnabled = clahe["enabled"].as<bool>();
+            }
+            if (clahe["clip_limit"])
+            {
+                cfg.imagePrep.claheClipLimit = clahe["clip_limit"].as<double>();
+            }
+            if (clahe["tile_grid_size"])
+            {
+                cfg.imagePrep.claheTileGridSize = clahe["tile_grid_size"].as<int>();
+            }
+        }
+    }
+
     const YAML::Node orb = root["orb"];
     if (orb)
     {
@@ -161,28 +190,20 @@ AppConfig loadConfig(const std::string& yamlPath)
         }
     }
 
-    const YAML::Node sift = root["sift"];
-    if (sift)
+    const YAML::Node brisk = root["brisk"];
+    if (brisk)
     {
-        if (sift["nfeatures"])
+        if (brisk["thresh"])
         {
-            cfg.sift.nfeatures = sift["nfeatures"].as<int>();
+            cfg.brisk.thresh = brisk["thresh"].as<int>();
         }
-        if (sift["n_octave_layers"])
+        if (brisk["octaves"])
         {
-            cfg.sift.nOctaveLayers = sift["n_octave_layers"].as<int>();
+            cfg.brisk.octaves = brisk["octaves"].as<int>();
         }
-        if (sift["contrast_threshold"])
+        if (brisk["pattern_scale"])
         {
-            cfg.sift.contrastThreshold = sift["contrast_threshold"].as<double>();
-        }
-        if (sift["edge_threshold"])
-        {
-            cfg.sift.edgeThreshold = sift["edge_threshold"].as<double>();
-        }
-        if (sift["sigma"])
-        {
-            cfg.sift.sigma = sift["sigma"].as<double>();
+            cfg.brisk.patternScale = brisk["pattern_scale"].as<float>();
         }
     }
 

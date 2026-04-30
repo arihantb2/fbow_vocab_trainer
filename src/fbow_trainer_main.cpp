@@ -57,7 +57,7 @@ int main(int argc, char** argv)
         }
         else
         {
-            trainSiftVocab(images, cfg, &voc, &descriptorsUsed, &imagesUsed);
+            trainBriskVocab(images, cfg, &voc, &descriptorsUsed, &imagesUsed);
         }
 
         std::cout << "Saving vocabulary to: " << cfg.output.vocabPath << std::endl;

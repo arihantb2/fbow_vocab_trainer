@@ -26,13 +26,11 @@ struct OrbConfig
     int fastThreshold = 20;
 };
 
-struct SiftConfig
+struct BriskConfig
 {
-    int nfeatures = 0;
-    int nOctaveLayers = 3;
-    double contrastThreshold = 0.04;
-    double edgeThreshold = 10.0;
-    double sigma = 1.6;
+    int thresh = 30;
+    int octaves = 3;
+    float patternScale = 1.0f;
 };
 
 struct TrainerConfig
@@ -44,6 +42,14 @@ struct TrainerConfig
 
     int maxFeaturesPerImage = 0;
     int maxTotalDescriptors = 0;  // 0 = unlimited; caps aggregate descriptor count across all images
+};
+
+struct ImagePrepConfig
+{
+    bool claheEnabled = false;
+    double claheClipLimit = 2.0;
+    int claheTileGridSize = 8;  // tiles are square (NxN)
+    double scale = 1.0;         // resize factor applied after CLAHE; 1.0 = no resize
 };
 
 struct OutputConfig
@@ -62,10 +68,11 @@ struct TestConfig
 
 struct AppConfig
 {
-    std::string featureType;  // "orb" or "sift"
+    std::string featureType;  // "orb" or "brisk"
     DatasetConfig dataset;
+    ImagePrepConfig imagePrep;
     OrbConfig orb;
-    SiftConfig sift;
+    BriskConfig brisk;
     TrainerConfig trainer;
     OutputConfig output;
     TestConfig test;

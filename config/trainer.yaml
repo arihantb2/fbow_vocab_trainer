@@ -1,5 +1,5 @@
 feature:
-  # Valid values: orb, sift
+  # Valid values: orb, brisk
   type: orb
 
 dataset:
@@ -26,13 +26,11 @@ orb:
   patch_size: 31
   fast_threshold: 20
 
-sift:
-  # SIFT extractor params (OpenCV cv::SIFT::create argument mapping).
-  nfeatures: 0
-  n_octave_layers: 3
-  contrast_threshold: 0.04
-  edge_threshold: 10.0
-  sigma: 1.6
+brisk:
+  # BRISK extractor params (OpenCV cv::BRISK::create argument mapping).
+  thresh: 30
+  octaves: 3
+  pattern_scale: 1.0
 
 trainer:
   # fbow vocabulary parameters (k-ary tree branching factor and depth).

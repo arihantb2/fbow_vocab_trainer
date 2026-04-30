@@ -13,6 +13,13 @@ dataset:
   max_images: 0
   extensions: [png, jpg, jpeg, bmp, tiff]
 
+image_prep:
+  scale: 1.0         # resize factor applied after CLAHE (0.5 = half res); 1.0 = no resize
+  clahe:
+    enabled: false
+    clip_limit: 2.0
+    tile_grid_size: 8
+
 orb:
   nfeatures: 5000
   scale_factor: 1.2
@@ -31,7 +38,7 @@ trainer:
   max_iters: 0
   max_features_per_image: 0
   # Hard cap on total descriptors across all images (0 = unlimited).
-  # ORB descriptors are 32 bytes each; memory pressure is less severe than SIFT.
+  # ORB descriptors are 32 bytes each.
   max_total_descriptors: 20000000
 
 output:
